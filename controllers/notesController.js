@@ -7,10 +7,18 @@ const asyncHandler = require('express-async-handler')
 // @access Private
 const getAllNotes = asyncHandler(async (req, res) => {
     const notes = await Note.find().lean()
+
     if (!notes?.length) {
         return res.status(400).json({message: 'No notes found'})
     }
-    res.json(notes)
+
+    // Add username to each note before sending the response
+    const notesWithUser = await Promise.all(notes.map(async (note) => {
+        const user = await User.findById(note.user).lean().exec()
+        return { ...note, username: user.username }
+    }))
+
+    res.json (notesWithUser)
 })
 
 // @desc Create all notes
@@ -61,7 +69,7 @@ const updateNote = asyncHandler(async (req, res) => {
 
     // // Check for duplicate
     const duplicate = await Note.findOne({ title }).lean().exec()
-    // // Allow updates to the original user
+    // // Allow updates to original note
     if (duplicate && duplicate?._id.toString() !==id) {
         return res.status(409).json({ message: 'A note with that title already exists'})
     }
